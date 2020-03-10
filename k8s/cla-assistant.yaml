@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cla-assistant
+  labels:
+    app: cla-assistant
+spec:
+  selector:
+    matchLabels:
+      app: cla-assistant
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+  template:
+    metadata:
+      labels:
+        app: cla-assistant
+    spec:
+      containers:
+        - name: cla-assistant
+          image: gcr.io/cockroach-dev-inf/cockroachlabs/cla-assistant:6eb234c-bob
+          envFrom:
+            - secretRef:
+                name: cla-assistant-secret
+          env:
+            - name: HOST
+              value: cla.crdb.dev
+            - name: PORT
+              value: "5000"
+            - name: PROTOCOL
+              value: https # Used in OAuth redirect URL
+            - name: MONGODB
+              value: mongodb://$(cla-assistant-user):$(cla-assistant-password)@127.0.0.1:27017/cla-assistant
+            - name: GITHUB_ADMIN_USERS
+              value: $(github-admin-users)
+            - name: GITHUB_CLIENT
+              value: $(github-client-id)
+            - name: GITHUB_SECRET
+              value: $(github-secret)
+            - name: GITHUB_TOKEN
+              value: $(github-token)
+          ports:
+            - containerPort: 5000
+              name: http
+          livenessProbe:
+            httpGet:
+              port: http
+          readinessProbe:
+            httpGet:
+              port: http
+        - name: mongodb
+          image: mongo:4
+          env:
+            - name: MONGO_INITDB_ROOT_PASSWORD_FILE
+              value: /secrets/mongodb-root-password
+            - name: MONGO_INITDB_ROOT_USERNAME_FILE
+              value: /secrets/mongodb-root-user
+          ports:
+            - containerPort: 27017
+              name: mongodb
+          livenessProbe:
+            tcpSocket:
+              port: mongodb
+          readinessProbe:
+            tcpSocket:
+              port: mongodb
+          volumeMounts:
+            - mountPath: /data/db/
+              name: data
+              subPath: cla-assistant-data-0
+            - mountPath: /secrets/
+              name: secrets
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: roachdash-claim
+        - name: secrets
+          secret:
+            secretName: cla-assistant-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cla-assistant
+  labels:
+    app: cla-assistant
+spec:
+  type: NodePort
+  selector:
+    app: cla-assistant
+  ports:
+    - port: 80
+      name: http
+      targetPort: http
