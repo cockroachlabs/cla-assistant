@@ -167,6 +167,5 @@ module.exports = {
         } catch (e) {
             logger.warn(e)
         }
-        res.status(200).send('OK')
     }
 }
