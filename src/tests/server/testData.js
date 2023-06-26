@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and CLA-assistant contributors
+//
+// SPDX-License-Identifier: Apache-2.0
+
 let testData = {
     ////////////////////////////////////////////
     /////////////////// ORG ////////////////////
@@ -98,7 +102,7 @@ let testData = {
         'token': 'testToken',
         'gist': 'https://gist.github.com/aa5a315d61ae9438b18d',
         'excludePattern': 'foo,bar,baz',
-        'whiteListPattern': '',
+        'allowListPattern': '',
     },
     'org_from_db_with_empty_excluded_patterns': {
         'orgId': 1,

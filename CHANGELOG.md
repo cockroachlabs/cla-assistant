@@ -1,4 +1,124 @@
+<!--
+SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and CLA-assistant contributors
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Change Log
+## [v2.13.0](https://github.com/cla-assistant/cla-assistant/tree/v2.13.0) (2022-03-23)
+
+**Fixes:**
+- await webhook removal to gracefully handle rejected promises (#854)
+- Update copyright year to 2022 (#834)
+
+## [v2.12.0](https://github.com/cla-assistant/cla-assistant/tree/v2.12.0) (2022-01-24)
+
+**Improvements:**
+- rename default branch to main (#799)
+- restructure files to separate code and runtime assets (#800)
+- use GitHub Actions OIDC to authenticate against GCP (#816)
+- remove configuration for stale bot (#821)
+- update to node16 and switch to karma-chrome (#823)
+
+**Fixes:**
+- await all promises before sending status back (#813)
+- use createOAuthAppAuth to create authentification when acting as the OAuthApp (#826)
+
+## [v2.11.0](https://github.com/cla-assistant/cla-assistant/tree/v2.11.0) (2021-11-08)
+**Features:**
+- Alpha: Add GitHub App as a hidden feature (#781)
+
+**Improvements:**
+- README.md: HTTP => HTTPS (#796)
+
+## [v2.10.0](https://github.com/cla-assistant/cla-assistant/tree/v2.10.0) (2021-10-20)
+**Features:**
+- Add option to except members of org from CLA (#783)
+
+**Improvements:**
+- Enable actions to deploy arbitrary commit to staging (#788, #789, #790, #792)
+
+## [v2.9.3](https://github.com/cla-assistant/cla-assistant/tree/v2.9.3) (2021-09-14)
+**Improvements:**
+- use native octokit calls instead of node-fetch (#768)
+- update all production dependencies to the their newest version (#767, #765, #764, #759, #763, #762, #761)
+- update octokit libraries and refactor Octokit usage (#759)
+
+## [v2.9.2](https://github.com/cla-assistant/cla-assistant/tree/v2.9.2) (2021-09-09)
+**Improvements:**
+- remove array-sugar and q; move codeceptjs to dev (#756)
+- use node-fetch; remove request(-promise-native) (#754, #757)
+- switch bower dependencies to npm (#753)
+
+## [v2.9.1](https://github.com/cla-assistant/cla-assistant/tree/v2.9.1) (2021-09-03)
+**Improvements:**
+- move sass compilation from startup to build (#747)
+- Update data storage location to cosmosDB (#741)
+- add option to associate logs with request ids/opentelemtry support (#749, #751)
+- replace base-64 with native base64 encoding (#746)
+- remove btoa, bunyan-sentry-stream, raven, socket.io, valid-url as no longer needed dependencies (#748)
+- resolve linter issues and set all rules to error (#744)
+- add COMMON_ISSUES as file (#743)
+
+**Fixed Bugs:**
+- improve request performance for getSignedCLA() (#739)
+
+## [v2.9.0](https://github.com/cla-assistant/cla-assistant/tree/v2.9.0) (2021-08-24)
+**Improvements:**
+- Implemented my signed CLAs feature (#688)
+- Capitalize sentence-like message (#678)
+- Cleanup project files (#731, #736, #737)
+- Update Dockerfile to use node-alpine base
+
+## [v2.8.6](https://github.com/cla-assistant/cla-assistant/tree/v2.8.6) (2021-02-23)
+**Improvements:**
+- updated SAP Logo
+
+## [v2.8.5](https://github.com/cla-assistant/cla-assistant/tree/v2.8.5) (2020-11-23)
+
+**Improvements:**
+- import JSON is supported
+- Improve Dockerfile `apk` command cache handling
+- Implemented additional API checks
+- Filter Archived Repositories
+- Added Gardner pipeline
+
+## [v2.8.4](https://github.com/cla-assistant/cla-assistant/tree/v2.8.4) (2020-08-12)
+
+**Improvements:**
+- fix deprecated mongodb connection style
+
+## [v2.8.3](https://github.com/cla-assistant/cla-assistant/tree/v2.8.3) (2020-07-23)
+
+**Improvements:**
+- present our terms of use and privacy policy on all pages
+
+## [v2.8.2](https://github.com/cla-assistant/cla-assistant/tree/v2.8.2) (2020-07-21)
+
+**Improvements:**
+- updated License
+- Changed from using Whitelist to allow list Credits: [Marko Schulz](https://github.com/datenreisender) [PR594](https://github.com/cla-assistant/cla-assistant/pull/594)
+
+## [v2.8.1](https://github.com/cla-assistant/cla-assistant/tree/v2.8.0) (2020-06-06)
+
+**Improvements:**
+- updated ISSUE_TEMPLATE
+- Introduced logging of all github responses with rate-limits
+
+## [v2.8.0](https://github.com/cla-assistant/cla-assistant/tree/v2.8.0) (2020-04-28)
+
+**New features:**
+- update count api- stop posting last entries and listing details. ([KharitonOff](https://github.com/KharitonOff))
+- Related issue: https://github.com/cla-assistant/cla-assistant/issues/520
+
+## [v2.7.0](https://github.com/cla-assistant/cla-assistant/tree/v2.7.0) (2020-03-17)
+
+**Merged pull requests:**
+- Fix race for out-of-order webhooks. [#546](https://github.com/cla-assistant/cla-assistant/pull/546) ([bobvawter](https://github.com/bobvawter))
+
+**Fixed Bugs:**
+- update logging and catch some exceptions
+- reduce logic on count/clas
 
 ## [v2.6.2](https://github.com/cla-assistant/cla-assistant/tree/v2.6.2) (2020-02-28)
 
@@ -54,8 +174,8 @@
 ## [v2.4.3](https://github.com/cla-assistant/cla-assistant/tree/v2.4.3) (2019-11-28)
 **Fixed Bugs:**
 - Added additional logging for trouble shooting the failing webhooks with status code 400
-- Bootstrapping webhook file in the beginning 
-- **classistant** GitHub account is blocked and So, using the **claassistantio** GitHub Account and it's token for 
+- Bootstrapping webhook file in the beginning
+- **classistant** GitHub account is blocked and So, using the **claassistantio** GitHub Account and it's token for
   commenting on the Pull Request (temporary workaround)
 
 ## [v2.4.2](https://github.com/cla-assistant/cla-assistant/tree/v2.4.2) (2019-10-15)
@@ -67,20 +187,20 @@
 **Fixed Bugs:**
 - removed duplicated method function call to linkeditem when there is a request from webhook
 - quick response to the incoming webhook instead of waiting for the whole flow to finish
-- introduced additional logging for debugging 
+- introduced additional logging for debugging
 
 ## [v2.4.0](https://github.com/cla-assistant/cla-assistant/tree/v2.4.0) (2019-10-09)
 **New Features:**
 - Introduced GitHub Action for CI/CD Pipeline
-- Moving the infrastructure of this project to Google Cloud Run Serverless Container  Platform 
+- Moving the infrastructure of this project to Google Cloud Run Serverless Container  Platform
 
 ## [v2.3.2](https://github.com/cla-assistant/cla-assistant/tree/v2.3.2) (2019-09-03)
 **Fixed bugs:**
-- Slowed down the GitHub API requests to spread out the API calls  for staying within the GitHub API rate limit when doing ReCheckPR for organisation 
+- Slowed down the GitHub API requests to spread out the API calls  for staying within the GitHub API rate limit when doing ReCheckPR for organisation
 
 ## [v2.3.1](https://github.com/cla-assistant/cla-assistant/tree/v2.3.1) (2019-08-09)
 **Fixed bugs:**
-- Optimised the code so that there is less db and Github Api calls during ValidateOrgPR 
+- Optimised the code so that there is less db and Github Api calls during ValidateOrgPR
 
 ## [v2.3.0](https://github.com/cla-assistant/cla-assistant/tree/v2.3.0) (2019-08-09)
 
@@ -89,12 +209,12 @@
 - Store full response in cache instead of custom built response object [#469](https://github.com/cla-assistant/cla-assistant/pull/470) ([amateurhuman](https://github.com/amateurhuman))
 
 **New feature:**
--  Enhancement of  UI look and feel [#452](https://github.com/cla-assistant/cla-assistant/issues/452) 
+-  Enhancement of  UI look and feel [#452](https://github.com/cla-assistant/cla-assistant/issues/452)
 
 ## [v2.2.1](https://github.com/cla-assistant/cla-assistant/tree/v2.2.1) (2019-07-29)
 
 **Fixed bugs:**
-- No membership check when the organization is whitelisted and the pull request is from a repository inside the same organization  
+- No membership check when the organization is whitelisted and the pull request is from a repository inside the same organization
 
 ## [v2.2.0](https://github.com/cla-assistant/cla-assistant/tree/v2.2.0) (2019-07-25)
 
@@ -104,7 +224,7 @@
 ## [v2.1.1](https://github.com/cla-assistant/cla-assistant/tree/v2.1.1) (2019-07-19)
 
 **Fixed bugs:**
-- Removed sentry logging 
+- Removed sentry logging
 
 ## [v2.1.0](https://github.com/cla-assistant/cla-assistant/tree/v2.1.0) (2019-07-16)
 
@@ -130,10 +250,10 @@
 ## [v2.0.0](https://github.com/cla-assistant/cla-assistant/tree/v2.0.0) (2019-06-26)
 
 **New features:**
-- refactored  the entire codebase from callback functions to Async-await 
+- refactored  the entire codebase from callback functions to Async-await
 - Moved package used for GitHub REST API client from node-github to octokit
 - Increased Node version from 8 to 11
-- Upgraded node dependencies 
+- Upgraded node dependencies
 
 **Fixed bugs:**
 - Fix: removing `public_repo` from Admin scope [#417](https://github.com/cla-assistant/cla-assistant/issues/417)
@@ -142,7 +262,7 @@
 ## [v1.10.1](https://github.com/cla-assistant/cla-assistant/tree/v1.10.1) (2019-06-17)
 
 **Fixed bugs:**
-- Update vulnerable dependencies 
+- Update vulnerable dependencies
 
 ## [v1.10.0](https://github.com/cla-assistant/cla-assistant/tree/v1.10.0) (2019-06-04)
 
@@ -214,7 +334,7 @@
 **New features:**
 - add edit screen for linked repos and orgs
 - provide a possibility to whitelist committers [\#173](https://github.com/cla-assistant/cla-assistant/issues/173), [\#232](https://github.com/cla-assistant/cla-assistant/issues/232), [\#197](https://github.com/cla-assistant/cla-assistant/issues/197)
-- add origin flag to the signatures in order to differentiate between signatures made via CLA Assistant tool, imported signatures and signatures coming via API 
+- add origin flag to the signatures in order to differentiate between signatures made via CLA Assistant tool, imported signatures and signatures coming via API
 - provide a possibility to import signature date and custom fields in addition to github user names [\#328](https://github.com/cla-assistant/cla-assistant/issues/328)
 - project owners can provide a link to their privacy policy and obtain user consent before signing the CLA [\#329](https://github.com/cla-assistant/cla-assistant/issues/329)
 
@@ -244,7 +364,7 @@
 ## [v1.6.0](https://github.com/cla-assistant/cla-assistant/tree/v1.6.0) (2018-05-25)
 
 **New features:**
-- show username and logout button on the cla page 
+- show username and logout button on the cla page
 - update to angular 1.7.0
 
 **Closed issues:**

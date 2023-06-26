@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and CLA-assistant contributors
+//
+// SPDX-License-Identifier: Apache-2.0
+
 /*eslint no-empty-function: "off"*/
 /*global describe, it, beforeEach, afterEach*/
 
@@ -6,26 +10,26 @@ const assert = require('assert')
 const sinon = require('sinon')
 
 // config
-global.config = require('../../../config')
+global.config = require('../../../server/src/config')
 
 // models
-const Repo = require('../../../server/documents/repo').Repo
-const User = require('../../../server/documents/user').User
+const Repo = require('../../../server/src/documents/repo').Repo
+const User = require('../../../server/src/documents/user').User
 
 //services
-const github = require('../../../server/services/github')
-const cla = require('../../../server/services/cla')
-const repo_service = require('../../../server/services/repo')
-const org_service = require('../../../server/services/org')
-const statusService = require('../../../server/services/status')
-const prService = require('../../../server/services/pullRequest')
-const log = require('../../../server/services/logger')
+const github = require('../../../server/src/services/github')
+const cla = require('../../../server/src/services/cla')
+const repo_service = require('../../../server/src/services/repo')
+const org_service = require('../../../server/src/services/org')
+const statusService = require('../../../server/src/services/status')
+const prService = require('../../../server/src/services/pullRequest')
+const log = require('../../../server/src/services/logger')
 
 // Test data
 const testData = require('../testData').data
 
 // api
-const cla_api = require('../../../server/api/cla')
+const cla_api = require('../../../server/src/api/cla')
 
 describe('', () => {
     let reqArgs
@@ -85,13 +89,23 @@ describe('', () => {
                         login: 'two'
                     }
                 },
-                callRepos: testData.orgRepos.concat({
-                    id: 2,
-                    name: 'testRepo',
-                    owner: {
-                        login: 'org'
+                callRepos: testData.orgRepos.concat(
+                    {
+                        id: 2,
+                        name: 'testRepo',
+                        owner: {
+                            login: 'org'
+                        },
+                    },
+                    {
+                        id: 3,
+                        name: 'testArchivedRepo',
+                        owner: {
+                            login: 'org'
+                        },
+                        archived: true,
                     }
-                })
+                )
             },
             repoService: {
                 get: JSON.parse(JSON.stringify(testData.repo_from_db)), //clone object
@@ -167,6 +181,10 @@ describe('', () => {
                 } else if (args.arg.username === 'two') {
                     return {
                         data: resp.github.callUser.two
+                    }
+                } else if (args.fun === 'getAuthenticated') {
+                    return {
+                        data: resp.github.callUser.one
                     }
                 } else if (args.arg.username === 'undefined') {
                     throw 'there is no user with username undefined'
@@ -709,7 +727,8 @@ describe('', () => {
         it('should call cla service on getSignedCLA', async () => {
             sinon.stub(cla, 'getSignedCLA').callsFake(async args => {
                 assert.deepEqual(args, {
-                    user: 'user'
+                    id: 1,
+                    login: 'one'
                 })
 
                 return {}
@@ -886,7 +905,7 @@ describe('', () => {
             req.args.gist = {
                 gist_url: testData.repo_from_db.gist
             }
-            resp.cla.getAll = [{}, {}]
+            resp.cla.getAll = [{userId: 1}, {userId: 2}]
 
             const number = await cla_api.countCLA(req)
             assert(cla.getAll.called)
@@ -894,7 +913,7 @@ describe('', () => {
         })
 
         it('should get gist url and version if not provided', async () => {
-            resp.cla.getAll = [{}, {}]
+            resp.cla.getAll = [{userId: 1}, {userId: 2}]
 
             const number = await cla_api.countCLA(req)
             assert(cla.getAll.called)
@@ -1193,7 +1212,7 @@ describe('', () => {
             }, 100))
         })
 
-        it('should update status with differentiation between whitelisted and other committers', async () => {
+        it('should update status with differentiation between people on allowlist and other committers', async () => {
             cla.check.restore()
             sinon.stub(cla, 'check').callsFake(async (args) => {
                 const res = {
@@ -1771,6 +1790,67 @@ describe('', () => {
                 assert(false, 'should throw an error')
             } catch (error) {
                 assert(error === expError.cla.terminate)
+            }
+        })
+    })
+
+    describe('cla:revokeSignature', () => {
+        let req
+        beforeEach(() => {
+            req = {
+                args: {
+                    _id: 1234,
+                    userId: 1,
+
+                    repo: 'Hello-World',
+                    owner: 'octocat',
+                },
+                user: {
+                    user: 'user',
+                    token: 'userToken'
+                }
+            }
+            expError.cla.revoke = null
+            sinon.stub(cla, 'revoke').callsFake(async () => {
+                if (expError.cla.revoke) {
+                    throw expError.cla.revoke
+                }
+            })
+        })
+
+        afterEach(() => cla.revoke.restore())
+
+        it('should call cla service revoke', async () => {
+            await cla_api.revoke(req)
+            assert(cla.revoke.called)
+        })
+
+        it('should send validation error when cla id is not provided', async () => {
+            let req = {
+                args: {
+                    userId: 1,
+                },
+                user: {
+                    user: 'user',
+                    token: 'userToken'
+                }
+            }
+            try {
+                await cla_api.revoke(req)
+                assert(false, 'should throw an error')
+            } catch (error) {
+                assert(error)
+                assert(!cla.revoke.called)
+            }
+        })
+
+        it('should send error and log error when revoke cla failed', async () => {
+            expError.cla.revoke = 'Cannot find cla record'
+            try {
+                await cla_api.revoke(req)
+                assert(false, 'should throw an error')
+            } catch (error) {
+                assert(error === expError.cla.revoke)
             }
         })
     })

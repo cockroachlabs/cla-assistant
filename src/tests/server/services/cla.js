@@ -1,23 +1,29 @@
+// SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and CLA-assistant contributors
+//
+// SPDX-License-Identifier: Apache-2.0
+
 /*global describe, it, beforeEach, afterEach*/
 // unit test
 const assert = require('assert')
 const sinon = require('sinon')
 
 //model
-const CLA = require('../../../server/documents/cla').CLA
+const CLA = require('../../../server/src/documents/cla').CLA
+const Org = require('../../../server/src/documents/org').Org
+const Repository = require('../../../server/src/documents/repo').Repo
 
 //services
-const org_service = require('../../../server/services/org')
-const repo_service = require('../../../server/services/repo')
-const github = require('../../../server/services/github')
-const logger = require('../../../server/services/logger')
+const org_service = require('../../../server/src/services/org')
+const repo_service = require('../../../server/src/services/repo')
+const github = require('../../../server/src/services/github')
+const logger = require('../../../server/src/services/logger')
+const config = require('../../../server/src/config')
 
-const config = require('../../../config')
 // test data
 const testData = require('../testData').data
 
 // service under test
-const cla = require('../../../server/services/cla')
+const cla = require('../../../server/src/services/cla')
 
 let expArgs = {}
 let testRes = {}
@@ -44,7 +50,7 @@ const stub = () => {
         gist: 'url/gistId',
         token: 'abc',
         sharedGist: false,
-        isUserWhitelisted: function () {
+        isUserOnAllowlist: function () {
             return false
         }
     }
@@ -154,6 +160,9 @@ describe('cla:getLastSignature', () => {
                 },
                 end_at: {
                     $gt: now
+                },
+                revoked_at: {
+                    $gt: now
                 }
             }, {
                 userId: 'userId',
@@ -164,7 +173,8 @@ describe('cla:getLastSignature', () => {
                 created_at: {
                     $lte: now
                 },
-                end_at: undefined
+                end_at: undefined,
+                revoked_at: undefined
             }, {
                 user: 'user',
                 userId: {
@@ -179,6 +189,9 @@ describe('cla:getLastSignature', () => {
                 },
                 end_at: {
                     $gt: now
+                },
+                revoked_at: {
+                    $gt: now
                 }
             }, {
                 user: 'user',
@@ -192,7 +205,8 @@ describe('cla:getLastSignature', () => {
                 created_at: {
                     $lte: now
                 },
-                end_at: undefined
+                end_at: undefined,
+                revoked_at: undefined
             }, {
                 userId: 'userId',
                 gist_url: 'url/gistId',
@@ -204,6 +218,9 @@ describe('cla:getLastSignature', () => {
                 },
                 end_at: {
                     $gt: now
+                },
+                revoked_at: {
+                    $gt: now
                 }
             }, {
                 userId: 'userId',
@@ -214,7 +231,8 @@ describe('cla:getLastSignature', () => {
                 created_at: {
                     $lte: now
                 },
-                end_at: undefined
+                end_at: undefined,
+                revoked_at: undefined
             }]
         }), true)
     })
@@ -493,9 +511,12 @@ describe('cla:checkPullRequestSignatures', () => {
             gist: 'url/gistId',
             sharedGist: false,
             token: 'abc',
-            isUserWhitelisted: function () {
+            isUserOnAllowlist: function () {
                 return false
-            }
+            },
+            isOrgOnAllowList: function () {
+                return false
+            },
         }
         clock = sinon.useFakeTimers(now.getTime())
         let prCreateDateString = '1970-01-01T00:00:00.000Z'
@@ -755,8 +776,8 @@ describe('cla:checkPullRequestSignatures', () => {
         }
     })
 
-    it('should not check submitter if he/she is whitelisted', async () => {
-        testRes.repoServiceGet.isUserWhitelisted = user => user === 'login0'
+    it('should not check submitters on the allowlist', async () => {
+        testRes.repoServiceGet.isUserOnAllowlist = user => user === 'login0'
         config.server.feature_flag.required_signees = 'submitter'
         testRes.claFindOne = null
         testRes.repoServiceGetCommitters = [{
@@ -785,8 +806,153 @@ describe('cla:checkPullRequestSignatures', () => {
         }
     })
 
-    it('should exclude whitelisted committers from the map', async () => {
-        testRes.repoServiceGet.isUserWhitelisted = (user) => user === 'login1'
+    it('should exempt submitter on the organization public member exempt list', async () => {
+        testRes.repoServiceGet.isOrgOnAllowlist = org => org === 'org0'
+        config.server.feature_flag.required_signees = 'submitter'
+        testRes.claFindOne = null
+
+        const args = {
+            repo: 'myRepo',
+            owner: 'owner',
+            number: '1'
+        }
+
+        sinon.stub(cla, '_getGHOrgMemberships').resolves([{
+            name: 'org0',
+            id: 1
+        }])
+
+        try {
+            const {
+                userMap: {
+                    not_signed
+                }
+            } = await cla.checkPullRequestSignatures(args)
+            assert.deepEqual(not_signed, [])
+            assert.equal(cla._getGHOrgMemberships.calledWithMatch('login0', 'abc'), true)
+        } finally {
+            config.server.feature_flag.required_signees = ''
+            cla._getGHOrgMemberships.restore()
+
+        }
+    })
+
+    it('should not exempt submitters on the organization public member exempt list', async () => {
+        testRes.repoServiceGet.isOrgOnAllowlist = org => org === 'org1'
+        config.server.feature_flag.required_signees = 'submitter'
+        testRes.claFindOne = null
+
+        const args = {
+            repo: 'myRepo',
+            owner: 'owner',
+            number: '1'
+        }
+
+        sinon.stub(cla, '_getGHOrgMemberships').resolves([{
+            name: 'org0',
+            id: 1
+        }])
+
+        try {
+            const {
+                userMap: {
+                    not_signed
+                }
+            } = await cla.checkPullRequestSignatures(args)
+            assert.deepEqual(not_signed, ['login0'])
+            assert.equal(cla._getGHOrgMemberships.calledWithMatch('login0', 'abc'), true)
+        } finally {
+            config.server.feature_flag.required_signees = ''
+            cla._getGHOrgMemberships.restore()
+        }
+    })
+
+    it('should only except a single committer if they are on the organization public member exempt list', async () => {
+        testRes.repoServiceGet.isOrgOnAllowlist = org => org === 'org0'
+        config.server.feature_flag.required_signees = 'committer'
+        testRes.claFindOne = null
+
+        testRes.repoServiceGetCommitters = [{
+            name: 'committer1',
+            id: '123'
+        }, {
+            name: 'committer2',
+            id: '321'
+        }]
+
+        const args = {
+            repo: 'myRepo',
+            owner: 'owner',
+            number: '1'
+        }
+
+        sinon.stub(cla, '_getGHOrgMemberships')
+            .onFirstCall().resolves([{
+                name: 'org0',
+                id: 1
+            }])
+            .onSecondCall().resolves([{
+                name: 'org1',
+                id: 1
+            }])
+
+        try {
+            const {
+                userMap: {
+                    not_signed
+                }
+            } = await cla.checkPullRequestSignatures(args)
+            assert.deepEqual(not_signed, ['committer2'])
+            assert.equal(cla._getGHOrgMemberships.calledWith('committer1', 'abc'), true)
+            assert.equal(cla._getGHOrgMemberships.calledWith('committer2', 'abc'), true)
+        } finally {
+            config.server.feature_flag.required_signees = ''
+            cla._getGHOrgMemberships.restore()
+        }
+    })
+
+    it('should correctly map github response down for _getGHOrgMemberships', async () => {
+        github.call.restore()
+        sinon.stub(github, 'call').resolves({
+            data: [
+                {
+                    login: 'org0',
+                    id: 1,
+                    someThing: 'blub'
+                },
+                {
+                    login: 'org1',
+                    id: 2,
+                    someThing: 'blub'
+                }
+            ]
+        })
+
+        const orgMemberships = await cla._getGHOrgMemberships('login0', 'abc')
+        assert.deepEqual(orgMemberships, [
+            {
+                name: 'org0',
+                id: 1
+            },
+            {
+                name: 'org1',
+                id: 2,
+            }
+        ])
+
+        assert.equal(github.call.calledWithMatch({
+            obj: 'orgs',
+            fun: 'listForUser',
+            arg: {
+                username: 'login0'
+            },
+            token: 'abc'
+        }), true)
+
+    })
+
+    it('should exclude committers on allowlist from the map', async () => {
+        testRes.repoServiceGet.isUserOnAllowlist = (user) => user === 'login1'
         testRes.repoServiceGetCommitters = [{
             name: 'login1',
             id: '123'
@@ -851,10 +1017,10 @@ describe('cla:checkPullRequestSignatures', () => {
             })
         })
 
-        it('should call callback function immediately if organization is whitelisted and there are no external committers ', async () => {
+        it('should call callback function immediately if organization is on allowlist and there are no external committers ', async () => {
             config.server.feature_flag.required_signees = 'submitter committer'
             testRes.getPR.data.head.repo.fork = false
-            testRes.repoServiceGet.isUserWhitelisted = login => login === testRes.getPR.data.head.repo.owner.login
+            testRes.repoServiceGet.isUserOnAllowlist = login => login === testRes.getPR.data.head.repo.owner.login
             testRes.repoServiceGetCommitters = [{
                 name: 'login1',
                 id: '123'
@@ -888,11 +1054,11 @@ describe('cla:checkPullRequestSignatures', () => {
                 config.server.feature_flag.required_signees = ''
             }
         })
-        it('should check if the external committer has signed the CLA when the organization is whitelisted (external Organisation) ', async () => {
+        it('should check if the external committer has signed the CLA when the organization is on allowlist (external Organisation) ', async () => {
             config.server.feature_flag.required_signees = 'submitter committer'
             testRes.getPR.data.head.repo.fork = true
             testRes.getPR.data.head.repo.owner.login = 'orgLogin1'
-            testRes.repoServiceGet.isUserWhitelisted = login => login === testRes.getPR.data.head.repo.owner.login
+            testRes.repoServiceGet.isUserOnAllowlist = login => login === testRes.getPR.data.head.repo.owner.login
             testRes.repoServiceGetCommitters = [{
                 name: 'login1',
                 id: '123'
@@ -1006,7 +1172,7 @@ describe('cla:sign', () => {
             gist: 'url/gistId',
             sharedGist: false,
             token: 'abc',
-            isUserWhitelisted: function () {
+            isUserOnAllowlist: function () {
                 return false
             }
         }
@@ -1179,39 +1345,53 @@ describe('cla:create', () => {
 
 describe('cla:getSignedCLA', () => {
     it('should get all clas signed by the user but only one per repo (linked or not)', async () => {
-        sinon.stub(repo_service, 'all').callsFake(async () => {
+        sinon.stub(Repository, 'find').callsFake(async () => {
             return [{
                 repo: 'repo1',
-                gist_url: 'gist_url'
+                owner: 'owner1',
+                gist: 'gist_url'
             }, {
                 repo: 'repo2',
-                gist_url: 'gist_url'
+                owner: 'owner1',
+                gist: 'gist_url'
+            },
+            {
+                repo: 'repo3',
+                owner: 'owner1',
+                gist: 'gist_url'
             }]
         })
 
+        sinon.stub(Org, 'find').callsFake(async () => {
+            return []
+        })
+
         sinon.stub(CLA, 'find').callsFake(async () => {
-            let listOfAllCla = [{
+            return [{
                 repo: 'repo1',
                 user: 'login',
+                owner: 'owner1',
                 gist_url: 'gist_url',
                 gist_version: '1'
             }, {
                 repo: 'repo2',
                 user: 'login',
+                owner: 'owner1',
                 gist_url: 'gist_url',
                 gist_version: '1'
             }, {
                 repo: 'repo2',
                 user: 'login',
+                owner: 'owner1',
                 gist_url: 'gist_url',
                 gist_version: '2'
             }, {
                 repo: 'repo3',
                 user: 'login',
+                owner: 'owner1',
                 gist_url: 'gist_url',
                 gist_version: '1'
             }]
-            return listOfAllCla
         })
 
         const args = {
@@ -1221,28 +1401,50 @@ describe('cla:getSignedCLA', () => {
         assert.equal(clas.length, 3)
         assert.equal(clas[2].repo, 'repo3')
         CLA.find.restore()
-        repo_service.all.restore()
+        Repository.find.restore()
+        Org.find.restore()
     })
 
     it('should select cla for the actual linked gist per repo even if it is signed earlier than others', async () => {
-        sinon.stub(repo_service, 'all').callsFake(async () => {
+        sinon.stub(Repository, 'find').callsFake(async () => {
             return [{
                 repo: 'repo1',
-                gist_url: 'gist_url2'
+                owner: 'owner1',
+                gist: 'gist_url2'
             }, {
                 repo: 'repo2',
-                gist_url: 'gist_url'
+                owner: 'owner1',
+                gist: 'gist_url'
             }, {
                 repo: 'repo3',
-                gist_url: 'gist_url'
+                owner: 'owner1',
+                gist: 'gist_url'
             }]
         })
-        sinon.stub(CLA, 'find').callsFake(async (arg) => {
-            let listOfAllCla = [{
+
+        sinon.stub(Org, 'find').callsFake(async () => {
+            return []
+        })
+
+        sinon.stub(CLA, 'find').callsFake(async () => {
+            return [{
                 repo: 'repo1',
                 user: 'login',
+                owner: 'owner1',
                 gist_url: 'gist_url1',
                 created_at: '2011-06-20T11:34:15Z'
+            }, {
+                repo: 'repo1',
+                user: 'login',
+                owner: 'owner1',
+                gist_url: 'gist_url2',
+                created_at: '2011-06-15T11:34:15Z'
+            }, {
+                repo: 'repo2',
+                user: 'login',
+                owner: 'owner1',
+                gist_url: 'gist_url',
+                created_at: '2011-06-15T11:34:15Z'
             }, {
                 repo: 'repo1',
                 user: 'login',
@@ -1254,20 +1456,6 @@ describe('cla:getSignedCLA', () => {
                 gist_url: 'gist_url',
                 created_at: '2011-06-15T11:34:15Z'
             }]
-            if (arg.$or) {
-                return [{
-                    repo: 'repo1',
-                    user: 'login',
-                    gist_url: 'gist_url2',
-                    created_at: '2011-06-15T11:34:15Z'
-                }, {
-                    repo: 'repo2',
-                    user: 'login',
-                    gist_url: 'gist_url',
-                    created_at: '2011-06-15T11:34:15Z'
-                }]
-            }
-            return listOfAllCla
         })
 
         const args = {
@@ -1275,9 +1463,10 @@ describe('cla:getSignedCLA', () => {
         }
         const clas = await cla.getSignedCLA(args)
         assert.equal(clas[0].gist_url, 'gist_url2')
-        assert.equal(CLA.find.callCount, 2)
+        assert.equal(CLA.find.callCount, 1)
         CLA.find.restore()
-        repo_service.all.restore()
+        Repository.find.restore()
+        Org.find.restore()
     })
 })
 
@@ -1421,7 +1610,7 @@ describe('cla:getAll', () => {
         }))
     })
 
-    it('should get only one newest cla per user if gist_version provided', async () => {
+    it('should get all clas per user if gist_version provided', async () => {
         CLA.find.restore()
         sinon.stub(CLA, 'find').callsFake(async (arg, _prop, options) => {
             assert(arg)
@@ -1450,7 +1639,7 @@ describe('cla:getAll', () => {
         }
 
         const arr = await cla.getAll(args)
-        assert.equal(arr.length, 1)
+        assert.equal(arr.length, 2)
     })
 })
 
@@ -1507,7 +1696,7 @@ describe('cla:getLinkedItem', () => {
             owner: 'login0',
             gist: 'url/gistId',
             token: 'abc',
-            isUserWhitelisted: function () {
+            isUserOnAllowlist: function () {
                 return false
             }
         }
@@ -1636,7 +1825,7 @@ describe('cla:terminate', () => {
             gist: 'url/gistId',
             sharedGist: false,
             token: 'abc',
-            isUserWhitelisted: function () {
+            isUserOnAllowlist: function () {
                 return false
             }
         }
@@ -1725,7 +1914,7 @@ describe('cla:isClaRequired', () => {
             owner: 'owner',
             gist: 'url/gistId',
             token: 'abc',
-            isUserWhitelisted: () => false
+            isUserOnAllowlist: () => false
         }
     })
 
@@ -1814,5 +2003,100 @@ describe('cla:isClaRequired', () => {
             token: 'abc'
         })
         assert(claIsRequired)
+    })
+})
+
+describe('cla:revoke', () => {
+    beforeEach(() => {
+        stub()
+        testRes.repoServiceGet = {
+            repoId: '123',
+            repo: 'myRepo',
+            owner: 'owner',
+            gist: 'url/gistId',
+            sharedGist: false,
+            token: 'abc',
+            userId: 1,
+            isUserOnAllowlist: function () {
+                return false
+            }
+        }
+        testErr.orgServiceGet = null
+        testErr.repoServiceGet = null
+        testErr.repoServiceGet = null
+        testRes.gistData = {
+            data: {
+                history: [{
+                    version: 'xyz'
+                }]
+            }
+        }
+    })
+
+    afterEach(() => restore())
+
+    it('should send error when revoking cla from a different user', async () => {
+        const args = {
+            repo: 'myRepo',
+            owner: 'owner',
+            token: 'test_token',
+            _id: 1,
+        }
+        const user = {
+            id: 1
+        }
+        testRes.repoServiceGet.userId = 2
+        let dbCla
+        try {
+            dbCla = await cla.revoke(args, user)
+        } catch (error) {
+            assert(error)
+            assert(!dbCla)
+        }
+    })
+
+    it('should send error when cannot find a signed cla to revoke', async () => {
+        const args = {
+            repo: 'myRepo',
+            owner: 'owner',
+            token: 'test_token',
+            _id: 1
+        }
+        const user = {
+            id: 1
+        }
+        testRes.claFindOne = null
+        let dbCla
+        try {
+            dbCla = await cla.revoke(args, user)
+        } catch (error) {
+            assert(error)
+            assert(!dbCla)
+        }
+    })
+
+    it('should successfully update the revoked_at when revoking a cla', async () => {
+        const args = {
+            repo: 'myRepo',
+            owner: 'owner',
+            token: 'test_token',
+            _id: 1
+        }
+        const user = {
+            id: 1
+        }
+        testRes.claFindOne = {
+            user: 'user',
+            userId: 1,
+            repoId: 'repoId',
+            gist_url: 'url/gistId',
+            created_at: '2012-06-20T11:34:15Z',
+            gist_version: 'xyz',
+            save: function () {
+                return Promise.resolve('Success')
+            }
+        }
+        const dbCla = await cla.revoke(args, user)
+        assert(dbCla)
     })
 })

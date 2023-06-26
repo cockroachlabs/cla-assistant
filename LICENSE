@@ -205,7 +205,7 @@
 --------------------------------------------------------------------------------------------------------------------------
 CONTRIBUTOR LICENSE AGREEMENT ASSISTANT SUBCOMPONENTS:
 
-Contributor License Agreement assistant includes the following subcomponents that are subject to separate license terms. 
+Contributor License Agreement assistant includes the following subcomponents that are subject to separate license terms.
 Your use of these subcomponents is subject to the separate license terms applicable to
 each subcomponent.
 
@@ -235,9 +235,9 @@ Licensor: npm, Inc. and Contributors
 Website: https://github.com/npm/npm
 License: Artistic License 2.0 + additional terms (see below)
 
-Component: ReviewNinja
+Component: CLAAssistant
 Licensor: SAP SE
-Website: https://github.com/reviewninja/review.ninja
+Website: https://github.com/cla-assistant/cla-assistant
 License: Apache License 2.0
 
 

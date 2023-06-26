@@ -1,5 +1,9 @@
+// SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and CLA-assistant contributors
+//
+// SPDX-License-Identifier: Apache-2.0
+
 /*eslint no-unused-expressions: "off"*/
-/*global angular, sinon, describe, xit, it, beforeEach, afterEach*/
+/*global angular, sinon, describe, it, beforeEach, afterEach*/
 
 describe('Settings Controller', function () {
 
@@ -196,7 +200,7 @@ describe('Settings Controller', function () {
         it('should get number of contributors on init', function () {
             $timeout.flush();
 
-            (settingsCtrl.scope.signatures.value.length).should.be.equal(1);
+            (settingsCtrl.scope.signatures.length).should.be.equal(1);
         });
 
         it('should prepare csv header for custom fields', function () {
