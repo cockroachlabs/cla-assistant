@@ -39,6 +39,8 @@ spec:
               value: $(github-secret)
             - name: GITHUB_TOKEN
               value: $(github-token)
+            - name: GITHUB_APP_ID
+              value: $(github-app-id)
           ports:
             - containerPort: 5000
               name: http
