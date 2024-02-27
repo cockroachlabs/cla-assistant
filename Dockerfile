@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM node:16-alpine
+FROM node:21-alpine3.18
 
 EXPOSE 5000
 
