@@ -68,7 +68,12 @@ const getCombinedStatus = async (args) => {
 
 const createStatus = async (args, context, description, state, target_url) => {
     try {
-        logger.debug(`StatusService-->createStatus for the repo ${args.owner}/${args.repo}/pull/${args.number}`)
+        logger.debug({
+            event: 'STATUS_CREATE',
+            repo: `${args.owner}/${args.repo}`,
+            pull_number: args.number,
+            msg: `Creating status for PR ${args.owner}/${args.repo}/pull/${args.number}`
+        })
         return github.callWithGitHubApp({
             obj: 'repos',
             fun: 'createCommitStatus',
@@ -85,13 +90,22 @@ const createStatus = async (args, context, description, state, target_url) => {
             token: args.token
         })
     } catch (error) {
-        logger.warn('Error on Create Status, possible cause - wrong token, saved token does not have enough rights: ')
+        logger.warn({
+            event: 'STATUS_CREATE_PERMISSION_ERROR',
+            error: error,
+            msg: 'Error on Create Status, possible cause - wrong token, saved token does not have enough rights'
+        })
     }
 }
 
 const findStatusToBeChanged = async (args) => {
     try {
-        logger.debug(`StatusService-->findStatusToBeChanged for the repo ${args.owner}/${args.repo}/pull/${args.number}`)
+        logger.debug({
+            event: 'STATUS_FIND',
+            repo: `${args.owner}/${args.repo}`,
+            pull_number: args.number,
+            msg: `Finding status to be changed for PR ${args.owner}/${args.repo}/pull/${args.number}`
+        })
         const response = await getStatuses(args)
         // let statuses = ''
         const description = args.signed ? 'Contributor License Agreement is signed.' : 'Contributor License Agreement is not signed yet.'
@@ -113,7 +127,11 @@ const findStatusToBeChanged = async (args) => {
         }
         return status
     } catch (error) {
-        logger.warn(error)
+        logger.warn({
+            event: 'STATUS_FIND_ERROR',
+            error: error,
+            msg: 'Error finding status'
+        })
     }
 }
 
@@ -136,18 +154,39 @@ const findClaStatus = async (args) => {
 
 const updateStatus = async (args) => {
     try {
-        logger.debug(`StatusService-->updateStatus for the repo ${args.owner}/${args.repo}/pull/${args.number}`)
+        logger.debug({
+            event: 'STATUS_UPDATE',
+            repo: `${args.owner}/${args.repo}`,
+            pull_number: args.number,
+            msg: `Updating status for PR ${args.owner}/${args.repo}/pull/${args.number}`
+        })
         const status = await findStatusToBeChanged(args)
 
         if (!status) {
-            logger.debug(`StatusService-->updateStatus status remains the same - no need to update ${args.owner}/${args.repo}/pull/${args.number}`)
+            logger.debug({
+                event: 'STATUS_NO_CHANGE',
+                repo: `${args.owner}/${args.repo}`,
+                pull_number: args.number,
+                msg: `Status remains the same - no need to update ${args.owner}/${args.repo}/pull/${args.number}`
+            })
             return
         }
         return createStatus(args, status.context, status.description, status.state, status.target_url)
 
     } catch (error) {
-        logger.debug(`StatusService-->failed on updateStatus for the repo ${args.owner}/${args.repo}/pull/${args.number}`)
-        logger.warn(new Error(`${error} with args: ${args}`).stack)
+        logger.debug({
+            event: 'STATUS_UPDATE_FAILED',
+            repo: `${args.owner}/${args.repo}`,
+            pull_number: args.number,
+            error: error,
+            msg: `Failed on updateStatus for the repo ${args.owner}/${args.repo}/pull/${args.number}`
+        })
+        logger.warn({
+            event: 'STATUS_UPDATE_ERROR',
+            error: error,
+            args: args,
+            msg: `Error updating status with args: ${args}`
+        })
     }
 }
 
@@ -160,12 +199,21 @@ const getPullRequestHeadShaIfNeeded = async (args) => {
         args.sha = pullRequest.head.sha
         return args
     } catch (error) {
-        logger.info(new Error(error + 'Cannot get pull request head.').stack)
+        logger.error({
+            event: 'PR_HEAD_ERROR',
+            error: error,
+            msg: 'Cannot get pull request head'
+        })
     }
 }
 
 const updateStatusIfNeeded = async (args, status, allowAbsent) => {
-    logger.debug(`StatusService-->updateStatusIfNeeded for the repo ${args.owner}/${args.repo}/pull/${args.number}`)
+    logger.debug({
+        event: 'STATUS_UPDATE_CHECK',
+        repo: `${args.owner}/${args.repo}`,
+        pull_number: args.number,
+        msg: `Checking if status needs update for PR ${args.owner}/${args.repo}/pull/${args.number}`
+    })
 
     if (!status) {
         return new Error('Status is required for updateStatusIfNeeded.')
@@ -188,7 +236,10 @@ const updateStatusIfNeeded = async (args, status, allowAbsent) => {
 
 class StatusService {
     async update(args) {
-        logger.debug(`StatusService-->update for the repo ${args.owner}/${args.repo}/pull/${args.number}`)
+        logger.debug({
+            event: 'STATUS_DEBUG',
+            msg: `StatusService-->update for the repo ${args.owner}/${args.repo}/pull/${args.number}`
+        })
         if (args && !args.sha) {
             try {
                 const resp = (await getPR(args)).data
@@ -202,7 +253,11 @@ class StatusService {
                     return updateStatus(args)
                 }
             } catch (error) {
-                logger.warn(new Error(`${error} with args: ${args}`).stack)
+                logger.warn({
+                    event: 'STATUS_WARNING',
+                    error: new Error(`${error} with args: ${args}`),
+                    msg: 'Error in status operation with args'
+                })
             }
         }
         if (args.sha) {
@@ -220,7 +275,13 @@ class StatusService {
     }
 
     async updateForClaNotRequired(args) {
-        logger.debug(`StatusService-->updateForClaNotRequired for the repo ${args.owner}/${args.repo}/pull/${args.number}`)
+        logger.debug({
+            event: 'PR_WEBHOOK_END',
+            msg: 'CLA not required for the repo',
+            repo: args.repo,
+            owner: args.owner,
+            number: args.number,
+        })
         let status = {
             context: 'license/cla',
             state: 'success',
@@ -230,7 +291,10 @@ class StatusService {
     }
 
     async updateForMergeQueue(args) {
-        logger.debug(`StatusService-->updateForMergeQueue for the repo ${args.owner}/${args.repo}/${args.sha}`)
+        logger.debug({
+            event: 'STATUS_DEBUG',
+            msg: `StatusService-->updateForMergeQueue for the repo ${args.owner}/${args.repo}/${args.sha}`
+        })
         let status = {
             context: 'license/cla',
             state: 'success',

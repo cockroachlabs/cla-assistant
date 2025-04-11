@@ -48,14 +48,21 @@ class ClaService {
             // This helps to not use the complete rate limit for the CLA bot, while still keep working in case the user token gets revoked
             return await github.call(args)
         } catch (error) {
-            logger.error(new Error(error).stack)
+            logger.error({
+                event: 'CLA_ERROR',
+                error: error,
+                msg: 'Error in CLA operation'
+            })
             args.token = config.server.github.token
             return await github.call(args)
         }
     }
 
     async _checkAll(users, repoId, orgId, sharedGist, gist_url, gist_version, onDates, hasExternalCommiter) {
-        logger.debug(`checkPullRequestSignatures--> _checkAll for the repoId ${repoId} and orgId ${orgId}`)
+        logger.debug({
+            event: 'CLA_DEBUG',
+            msg: `checkPullRequestSignatures--> _checkAll for the repoId ${repoId} and orgId ${orgId}`
+        })
         let promises = []
         const userMap = {
             signed: [],
@@ -79,7 +86,10 @@ class ClaService {
                 }
             } catch (error) {
                 userMap.not_signed.push(user.name)
-                logger.info(`could not get signature of ${user.name} for repoId ${repoId}`)
+                logger.info({
+                    event: 'CLA_INFO',
+                    msg: `could not get signature of ${user.name} for repoId ${repoId}`
+                })
             }
         })
 
@@ -201,7 +211,11 @@ class ClaService {
             return orgMembers
 
         } catch (error) {
-            logger.error(new Error(error).stack)
+            logger.error({
+                event: 'CLA_ERROR',
+                error: error,
+                msg: 'Error in CLA operation'
+            })
         }
 
     }
@@ -228,7 +242,11 @@ class ClaService {
             return orgMemberships
 
         } catch (error) {
-            logger.error(new Error(error).stack)
+            logger.error({
+                event: 'CLA_ERROR',
+                error: error,
+                msg: 'Error in CLA operation'
+            })
         }
     }
 
@@ -298,7 +316,10 @@ class ClaService {
     async _getLastSignatureOnMultiDates(user, userId, repoId, orgId, sharedGist = false, gist_url, gist_version, date) {
         if ((!user && !userId) || (!repoId && !orgId) || !gist_url || (date && !Array.isArray(date))) {
             const msg = `Not enough arguments provided for getLastSignatureOnMultiDates() ${user} ${userId} ${repoId} ${orgId} ${sharedGist} ${gist_url} ${gist_version} ${date}`
-            logger.error(msg)
+            logger.error({
+                event: 'CLA_ERROR',
+                msg: msg
+            })
             throw new Error(msg)
         }
         let query = {
@@ -319,7 +340,10 @@ class ClaService {
 
         query = this._updateQuery(query, sharedGist, date)
 
-        logger.info(`temporary debug - query: ${JSON.stringify(query)}`)
+        logger.info({
+            event: 'CLA_INFO',
+            msg: `temporary debug - query: ${JSON.stringify(query)}`
+        })
 
         let cla = await CLA.findOne(query, {}, {
             sort: {
@@ -356,7 +380,11 @@ class ClaService {
 
             return false
         } catch (e) {
-            logger.error(new Error(e).stack)
+            logger.error({
+                event: 'CLA_ERROR',
+                error: new Error(e),
+                msg: 'Error in CLA operation'
+            })
 
             return true
         }
@@ -548,7 +576,7 @@ class ClaService {
         if (committerSignatureRequired) {
             // logger.debug(`checkPullRequestSignatures-->getPRCommitters for the repo ${args.owner}/${args.repo}`)
             const committers = await repoService.getPRCommitters(args)
-            signees = _.uniqWith([...signees, ...committers], (object, other) => object.id == other.id)
+            signees = _.uniqWith(Array.prototype.concat(signees, committers), (object, other) => object.id == other.id)
         }
 
         signees = signees.filter(signee =>
@@ -628,7 +656,11 @@ class ClaService {
             argsToCreate.repo = item.repo
         }
         if (!argsToCreate.origin) {
-            logger.error(new Error('unknown origin of the signature'))
+            logger.error({
+                event: 'CLA_ERROR',
+                error: new Error('unknown origin of the signature'),
+                msg: 'Unknown origin of signature'
+            })
             argsToCreate.origin = `unknown|${args.user}`
         }
 
@@ -639,11 +671,19 @@ class ClaService {
                 owner: args.owner
             }).then((resp) => {
                 if (resp.success) {
-                    logger.info('repository migration successful:', args)
+                    logger.info({
+                        event: 'CLA_INFO',
+                        msg: 'repository migration successful',
+                        args: args
+                    })
                 }
             })
         } catch (e) {
-            logger.debug('tried to migrate repository because someone signed a CLA but failed:', e)
+            logger.debug({
+                event: 'CLA_DEBUG',
+                msg: 'tried to migrate repository because someone signed a CLA but failed',
+                error: e
+            })
         }
 
         const signature = await this.create(argsToCreate)
@@ -771,10 +811,16 @@ class ClaService {
             try {
                 return CLA.find(selection, {}, options)
             } catch (error) {
-                logger.warn('Error occured when getting all signed CLAs for given repo without gist version' + error)
-                logger.warn('Api cla.getAll failed with selection ' + selection)
-                // eslint-disable-next-line no-console
-                console.log('Api cla.getAll failed with selection from console log ' + selection)
+                logger.warn({
+                    event: 'CLA_WARNING',
+                    error: error,
+                    msg: 'Warning in CLA operation'
+                })
+                logger.warn({
+                    event: 'CLA_WARNING',
+                    error: error,
+                    msg: 'Warning in CLA operation'
+                })
             }
         }
         try {
@@ -784,7 +830,16 @@ class ClaService {
             }
             return clas
         } catch (error) {
-            logger.warn('Error occured when getting all signed CLAs for given repo ' + error)
+            logger.warn({
+                event: 'CLA_WARNING',
+                error: error,
+                msg: 'Warning in CLA operation'
+            })
+            logger.warn({
+                event: 'CLA_WARNING',
+                error: error,
+                msg: 'Warning in CLA operation'
+            })
         }
 
 
@@ -825,11 +880,17 @@ class ClaService {
         const currentVersion = gist.data.history[0].version
 
 
-        logger.info(`temporary debug repoId: ${item.repoId}`)
-        logger.info(`temporary debug orgId: ${item.orgId}`)
-        logger.info(`temporary debug userId: ${args.userId}`)
-        logger.info(`temporary debug args.user: ${args.user}`)
-        logger.info(`temporary debug endDate: ${endDate}`)
+        logger.info({
+            event: 'CLA_INFO',
+            msg: 'temporary debug',
+            data: {
+                repoId: item.repoId,
+                orgId: item.orgId,
+                userId: args.userId,
+                user: args.user,
+                endDate: endDate
+            }
+        })
 
         const cla = await this._getLastSignatureOnMultiDates(args.user, args.userId, item.repoId, item.orgId, item.sharedGist, item.gist, currentVersion, onDates)
 
@@ -852,13 +913,27 @@ class ClaService {
         const cla = await CLA.findOne({ _id: args._id });
 
         if (user.id !== Number(cla.userId)) {
-            logger.error('User: ' + cla.user + ' is unauthorized to revoke cla with id: ' + cla._id);
+            logger.error({
+                event: 'CLA_ERROR',
+                msg: 'User is unauthorized to revoke CLA',
+                data: {
+                    user: cla.user,
+                    claId: cla._id
+                }
+            })
             throw new Error('Unauthorized to revoke CLA');
         }
 
         cla.revoked_at = new Date();
         await cla.save();
-        logger.info('User: ' + cla.user + ' has revoked the cla for repo: ' + cla.repo);
+        logger.info({
+            event: 'CLA_INFO',
+            msg: 'User has revoked the CLA',
+            data: {
+                user: cla.user,
+                repo: cla.repo
+            }
+        });
 
         return cla;
 

@@ -76,7 +76,12 @@ class PullRequestService {
                     arg.comment_id = comment.id
                     return updateCommentOfDeprecatedUser(arg, pullNumber, owner, repo)
                 } else if (arg.body === comment.body) {
-                    logger.debug(`Skip updateComment for the PR ${url.githubHttpPullRequest(owner, repo, pullNumber)} as there are no text changes`)
+                    logger.debug({
+                        event: 'COMMENT_SKIP_UPDATE',
+                        repo: `${owner}/${repo}`,
+                        pull_number: pullNumber,
+                        msg: `Skip updateComment for the PR ${url.githubHttpPullRequest(owner, repo, pullNumber)} as there are no text changes`
+                    })
                     return
                 }
                 fun = 'updateComment'
@@ -92,8 +97,18 @@ class PullRequestService {
                 token: config.server.github.token,
                 owner
             }).catch((error) => {
-                logger.debug(`Failed on api call issues/${fun} for PR ${url.githubHttpPullRequest(owner, repo, pullNumber)}`)
-                logger.warn(new Error(error).stack)
+                logger.debug({
+                    event: 'COMMENT_UPDATE_FAILED',
+                    repo: `${owner}/${repo}`,
+                    pull_number: pullNumber,
+                    error: error,
+                    msg: `Failed on api call issues/${fun} for PR ${url.githubHttpPullRequest(owner, repo, pullNumber)}`
+                })
+                logger.warn({
+                    event: 'COMMENT_UPDATE_ERROR',
+                    error: error,
+                    msg: 'Error updating comment'
+                })
             })
         } catch (error) {
             logger.warn(new Error(error).stack)
@@ -146,7 +161,12 @@ class PullRequestService {
                 owner: args.owner
             })
         } catch (error) {
-            logger.warn(new Error(`${error} with args: ${args}`).stack)
+            logger.warn({
+                event: 'COMMENT_UPDATE_ERROR',
+                error: error,
+                args: args,
+                msg: `Error updating comment with args: ${args}`
+            })
         }
     }
 
@@ -189,7 +209,10 @@ function updateCommentOfDeprecatedUser(arg, pullNumber, owner, repo) {
         token: config.server.github.token_old,
         owner: arg.owner
     }).catch(() => {
-        logger.debug('Failed on deleting comment from the old user')
+        logger.debug({
+            event: 'COMMENT_DELETE_FAILED',
+            msg: 'Failed on deleting comment from the old user'
+        })
     })
     arg.issue_number = pullNumber
     github.callWithGitHubApp({
@@ -199,7 +222,15 @@ function updateCommentOfDeprecatedUser(arg, pullNumber, owner, repo) {
         token: config.server.github.token,
         owner: arg.owner
     }).catch(() => {
-        logger.debug('Failed on creating comment for CLAassistant user')
+        logger.debug({
+            event: 'COMMENT_CREATE_FAILED',
+            msg: 'Failed on creating comment for CLAassistant user'
+        })
     })
-    logger.debug(`Changing comment user for PR ${url.githubHttpPullRequest(owner, repo, pullNumber)}`)
+    logger.debug({
+        event: 'COMMENT_USER_CHANGE',
+        repo: `${owner}/${repo}`,
+        pull_number: pullNumber,
+        msg: `Changing comment user for PR ${url.githubHttpPullRequest(owner, repo, pullNumber)}`
+    })
 }

@@ -195,7 +195,10 @@ class RepoService {
         } catch(error) {
             return _resp('GitHub App not installed')
         }
-        logger.debug('generated app token:', appToken)
+        logger.debug({
+            event: 'APP_TOKEN_GENERATED',
+            msg: 'Generated app token'
+        })
 
         // check if the app has permission to list pull requests
         try {
@@ -211,25 +214,39 @@ class RepoService {
                 },
             }, true)
         } catch (error) {
-            logger.error(error)
+            logger.error({
+                event: 'REPO_ERROR',
+                error: error,
+                msg: 'Error in repo operation'
+            })
             return _resp('GitHub App has insufficient permissions')
         }
 
         // remove token from database
-        logger.info('Removing token from repository object')
+        logger.info({
+            event: 'TOKEN_REMOVAL',
+            msg: 'Removing token from repository object'
+        })
         repo.token = undefined
         try {
             await repo.save()
         } catch(error) {
             return _resp('Cannot save repository')
         }
-        logger.info('done!')
+        logger.info({
+            event: 'OPERATION_COMPLETE',
+            msg: 'Operation completed successfully'
+        })
 
         // remove webhook
         try {
             await webhookService.removeRepoHook(args.owner, args.repo, appToken)
         } catch(error) {
-            logger.warn('cannot remove webhook/s from repository:', error.toString())
+            logger.warn({
+                event: 'WEBHOOK_REMOVAL_ERROR',
+                error: error,
+                msg: 'Cannot remove webhook/s from repository'
+            })
         }
 
         return _resp('Migration successful', true)
@@ -268,9 +285,17 @@ class RepoService {
         let self = this
 
         let handleError = (err, message, a) => {
-            logger.warn(err)
+            logger.warn({
+                event: 'REPO_ERROR',
+                error: err,
+                msg: 'Error in repo operation'
+            })
             if (!a.count) {
-                logger.info('getPRCommitters with arg: ', a)
+                logger.info({
+                    event: 'PR_COMMITTERS_REQUEST',
+                    args: a,
+                    msg: 'Getting PR committers'
+                })
             }
             throw new Error(message)
         }
@@ -284,7 +309,11 @@ class RepoService {
                 const body = await github.callGraphqlWithGitHubApp(query, arg.token)
 
                 if (body.errors) {
-                    logger.info(new Error(body.errors[0].message).stack)
+                    logger.info({
+                        event: 'GRAPHQL_ERROR',
+                        error: new Error(body.errors[0].message),
+                        msg: 'GraphQL error occurred'
+                    })
                 }
 
                 const data = body.data
