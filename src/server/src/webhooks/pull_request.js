@@ -86,7 +86,7 @@ async function updateStatusAndComment(args, item) {
                     number: args.number,
                 })
             } catch (error) {
-                logger.error({
+                logger.warn({
                     event: 'PR_WEBHOOK_WARNING',
                     error: error,
                     msg: 'Warning in PR webhook operation'

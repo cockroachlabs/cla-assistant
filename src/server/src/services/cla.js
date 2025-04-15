@@ -816,11 +816,6 @@ class ClaService {
                     error: error,
                     msg: 'Warning in CLA operation'
                 })
-                logger.warn({
-                    event: 'CLA_WARNING',
-                    error: error,
-                    msg: 'Warning in CLA operation'
-                })
             }
         }
         try {
@@ -830,11 +825,6 @@ class ClaService {
             }
             return clas
         } catch (error) {
-            logger.warn({
-                event: 'CLA_WARNING',
-                error: error,
-                msg: 'Warning in CLA operation'
-            })
             logger.warn({
                 event: 'CLA_WARNING',
                 error: error,
