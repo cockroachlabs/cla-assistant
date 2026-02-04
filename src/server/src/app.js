@@ -265,12 +265,17 @@ app.all('/api/:obj/:fun', async (req, res) => {
 
 app.all('/github/webhooks', async (req, res) => {
     const signature = req.get('X-Hub-Signature')
-    if (!(await verifyWebhookSignature(
-        config.server.github.app.webhookSecret,
-        JSON.stringify(req.body),
-        signature
-    ))) {
-        return res.status(401).send('Cannot verify webhook signature')
+    try {
+        if (!(await verifyWebhookSignature(
+            config.server.github.app.webhookSecret,
+            JSON.stringify(req.body),
+            signature
+        ))) {
+            return res.status(401).send('Cannot verify webhook signature')
+        }
+    } catch (error) {
+        log.error('Webhook signature verification failed:', error)
+        return res.status(401).send('Webhook signature verification failed')
     }
     const event = req.get('X-GitHub-Event')
     const hook = webhooks[event]
