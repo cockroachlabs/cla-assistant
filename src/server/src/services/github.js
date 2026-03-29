@@ -24,15 +24,33 @@ const OctokitWithPluginsAndDefaults = Octokit.plugin(
     userAgent: 'CLA assistant',
     throttle: {
         onRateLimit: (retryAfter, options) => {
-            logger.info(`Request quota exhausted for request ${options.method} ${options.url}`)
+            logger.warn({
+                event: 'RATE_LIMIT_EXHAUSTED',
+                method: options.method,
+                url: options.url,
+                retry_after: retryAfter,
+                msg: `Request quota exhausted for request ${options.method} ${options.url}`
+            })
             if (options.request.retryCount === 0) { // only retries once
-                logger.info(`Retrying after ${retryAfter} seconds!`)
+                logger.info({
+                    event: 'RATE_LIMIT_RETRY',
+                    method: options.method,
+                    url: options.url,
+                    retry_after: retryAfter,
+                    msg: `Retrying after ${retryAfter} seconds!`
+                })
                 return true
             }
         },
         onAbuseLimit: (retryAfter, options) => {
             // does not retry, only logs a warning
-            logger.info(`Abuse detected for request ${options.method} ${options.url}`)
+            logger.warn({
+                event: 'RATE_LIMIT_ABUSE',
+                method: options.method,
+                url: options.url,
+                retry_after: retryAfter,
+                msg: `Abuse detected for request ${options.method} ${options.url}`
+            })
         }
     }
 })
@@ -41,7 +59,11 @@ async function callGithub(octokit, obj, fun, arg, cacheKey, cacheTime) {
     if (cacheKey && !config.server.nocache) {
         const cachedRes = cache.get(cacheKey)
         if (cachedRes) {
-            logger.info(`Result returned from cache for ${obj}.${fun}`)
+            logger.info({
+                event: 'CACHE_HIT',
+                operation: `${obj}.${fun}`,
+                msg: `Result returned from cache for ${obj}.${fun}`
+            })
             return cachedRes
         }
     }
@@ -161,7 +183,13 @@ const githubService = {
         try {
             return callGithub(octokit, obj, fun, arg, cacheKey, arg.cacheTime)
         } catch (error) {
-            logger.info(`${error} - Error on callGithub.${obj}.${fun} with args ${arg}.`)
+            logger.error({
+                event: 'GITHUB_API_ERROR',
+                operation: `callGithub.${obj}.${fun}`,
+                args: arg,
+                error: error,
+                msg: `${error} - Error on callGithub.${obj}.${fun} with args ${arg}.`
+            })
             throw new Error(error)
         }
     },
@@ -188,12 +216,20 @@ const githubService = {
             delete request.owner
             const token = await getInstallationAccessTokenForUser(username)
             request.token = token
-            if (printLog) logger.info(request)
+            if (printLog) logger.info({
+                event: 'GITHUB_API_REQUEST',
+                request: request,
+                msg: 'Making GitHub API request'
+            })
         } catch (error) {
             if (throwError) {
                 throw error
             }
-            logger.error(error);
+            logger.error({
+                event: 'GITHUB_API_ERROR',
+                error: error,
+                msg: 'Error in GitHub API call'
+            });
         }
         return githubService.call(request);
     },
@@ -204,9 +240,17 @@ const githubService = {
             delete query.owner
             const ghsToken = await getInstallationAccessTokenForUser(username)
             token = ghsToken
-            logger.info(query)
+            logger.info({
+                event: 'GITHUB_GRAPHQL_REQUEST',
+                query: query,
+                msg: 'Making GitHub GraphQL request'
+            })
         } catch (error) {
-            logger.error(error);
+            logger.error({
+                event: 'GITHUB_GRAPHQL_ERROR',
+                error: error,
+                msg: 'Error in GitHub GraphQL call'
+            });
         }
         return githubService.callGraphql(query, token);
     }
