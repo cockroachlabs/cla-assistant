@@ -21,33 +21,34 @@ on:
   pull_request:
     branches:
       - main
+      - crl-main
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         node_version:
-          - 16
+          - 24
         os:
           - ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.ref }}
 
       - name: Use specified node version
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v7
         with:
-          version: ${{ matrix.node_version }}
+          node-version: ${{ matrix.node_version }}
       - name: Npm Install
         run: |
           npm install
 
       - name: grunt build and test
         run: |
-          grunt build
-          grunt test
-          grunt coverage
+          npx grunt build
+          npx grunt test
+          npx grunt coverage
       - name: Test Coverage
         uses: coverallsapp/github-action@master
         with:
