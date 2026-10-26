@@ -23,6 +23,7 @@ const rTracer = require('cls-rtracer')
 const expressSession = require('express-session');
 const MongoStore = require('connect-mongo');
 const { verify: verifyWebhookSignature } = require('@octokit/webhooks-methods')
+const requestLogger = require('./middleware/request-logger')
 
 // var sass_middleware = require('node-sass-middleware');
 
@@ -51,6 +52,9 @@ if (config.server.observability.request_trace_header_name) {
     tracingOptions.headerName = config.server.observability.request_trace_header_name
 }
 app.use(rTracer.expressMiddleware(tracingOptions))
+
+// Add request logging middleware
+app.use(requestLogger)
 
 // redirect from http to https
 app.use((req, res, next) => {

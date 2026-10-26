@@ -38,7 +38,11 @@ function checkReturnTo(req, res, next) {
 
     req.session.returnTo = req.query.public === 'true' ? req.session.next || req.headers.referer : '/'
 
-    logger.debug('Check returnTo and call passport authenticate with appropriate scope. return to:', req.session.returnTo)
+    logger.debug({
+        event: 'AUTH_SCOPE_CHECK',
+        return_to: req.session.returnTo,
+        msg: 'Check returnTo and call passport authenticate with appropriate scope'
+    })
 
     passport.authenticate(strategy, {
         scope: scope
@@ -48,8 +52,15 @@ function checkReturnTo(req, res, next) {
 router.get('/auth/github', checkReturnTo)
 
 const githubCallbackPost = (req, res) => {
-    logger.debug('Process authentication callback after passport authenticate')
-    logger.debug('User scopes:', req.user)
+    logger.debug({
+        event: 'AUTH_CALLBACK_START',
+        msg: 'Process authentication callback after passport authenticate'
+    })
+    logger.debug({
+        event: 'USER_SCOPES',
+        scopes: req.user,
+        msg: 'User scopes'
+    })
     if (req.user &&
         req.session.requiredScope !== 'public' &&
         utils.couldBeAdmin(req.user.login) &&
@@ -60,12 +71,18 @@ const githubCallbackPost = (req, res) => {
     }
     res.redirect(req.session.returnTo || req.headers.referer || '/')
     req.session.next = null
-    logger.debug('Finish processing authentication callback after passport authenticate')
+    logger.debug({
+        event: 'AUTH_CALLBACK_END',
+        msg: 'Finish processing authentication callback after passport authenticate'
+    })
 }
 
 router.get('/auth/github/callback',
     function (req, res, next) {
-        logger.debug('Start processing OAuth authentication callback')
+        logger.debug({
+            event: 'OAUTH_CALLBACK_START',
+            msg: 'Start processing OAuth authentication callback'
+        })
         next()
     },
     passport.authenticate('github-oauth', {
@@ -76,7 +93,10 @@ router.get('/auth/github/callback',
 
 router.get('/auth/github/app-callback',
     function (req, res, next) {
-        logger.debug('Start processing App authentication callback')
+        logger.debug({
+            event: 'APP_CALLBACK_START',
+            msg: 'Start processing App authentication callback'
+        })
         next()
     },
     passport.authenticate('github-app-auth', {

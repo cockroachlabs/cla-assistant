@@ -27,7 +27,11 @@ router.use('/accept/:owner/:repo', async (req, res) => {
             await cla.sign(req)
         } catch (e) {
             if (e && (!e.code || e.code != 200)) {
-                logger.error(e)
+                logger.error({
+                    event: 'ERROR',
+                    error: e,
+                    msg: 'Error processing request'
+                })
 
                 return
             }
@@ -63,7 +67,13 @@ router.all('/static/*', (req, res) => {
 router.get('/check/:owner/:repo', (req, res) => {
     let referer = req.header('Referer')
     let back = referer && referer.includes('github.com') ? referer : 'https://github.com'
-    logger.info('Recheck PR requested for ', `https://github.com/${req.params.owner}/${req.params.repo}/pull/${req.query.pullRequest}`, `referer was ${referer}`)
+    logger.info({
+        event: 'PR_RECHECK_REQUESTED',
+        repo: `${req.params.owner}/${req.params.repo}`,
+        pull_number: req.query.pullRequest,
+        referer: referer,
+        msg: `Recheck PR requested for https://github.com/${req.params.owner}/${req.params.repo}/pull/${req.query.pullRequest}, referer was ${referer}`
+    })
     cla.validatePullRequest({
         owner: req.params.owner,
         repo: req.params.repo,

@@ -88,7 +88,11 @@ class WebhookService {
             const res = await github.call(args)
             return res.data
         } catch (error) {
-            logger.info(new Error(error).stack)
+            logger.error({
+                event: 'WEBHOOK_ERROR',
+                error: error,
+                msg: 'Error in webhook operation'
+            })
         }
 
     }
@@ -132,7 +136,11 @@ class WebhookService {
         try {
             return github.call(args)
         } catch (error) {
-            logger.info(new Error(error).stack)
+            logger.error({
+                event: 'WEBHOOK_ERROR',
+                error: error,
+                msg: 'Error in webhook operation'
+            })
         }
 
     }

@@ -15,7 +15,12 @@ const github = require('../services/github')
 function updateToken(item, newToken) {
     item.token = newToken
     item.save()
-    logger.debug('Update access token for repo / org', item.repo || item.org)
+    logger.debug({
+        event: 'TOKEN_UPDATE',
+        item_type: item.repo ? 'repo' : 'org',
+        item_name: item.repo || item.org,
+        msg: `Update access token for ${item.repo ? 'repo' : 'org'} ${item.repo || item.org}`
+    })
 }
 
 async function checkToken(item, accessToken) {
@@ -45,14 +50,22 @@ async function checkToken(item, accessToken) {
                 const ghRepo = await repoService.getGHRepo(item)
                 if (!(ghRepo && ghRepo.permissions && ghRepo.permissions.admin)) {
                     updateToken(item, newToken)
-                    logger.info(`Update access token for repo ${item.repo} admin rights have been changed`)
+                    logger.info({
+                        event: 'TOKEN_UPDATE_ADMIN',
+                        repo: item.repo,
+                        msg: `Update access token for repo ${item.repo} admin rights have been changed`
+                    })
                 }
             }
         }
     } catch (error) {
         updateToken(item, newToken)
+        logger.warn({
+            event: 'TOKEN_UPDATE_ERROR',
+            error: error,
+            msg: 'Error updating token'
+        })
     }
-
 }
 
 const githubVerifyCallback = async (accessToken, _refreshToken, params, profile, done) => {
@@ -69,7 +82,11 @@ const githubVerifyCallback = async (accessToken, _refreshToken, params, profile,
             user.save()
         }
     } catch (error) {
-        logger.warn(error.stack)
+        logger.warn({
+            event: 'USER_UPDATE_ERROR',
+            error: error,
+            msg: 'Error updating user'
+        })
     }
 
     if (!user) {
@@ -80,7 +97,11 @@ const githubVerifyCallback = async (accessToken, _refreshToken, params, profile,
                 token: accessToken
             })
         } catch (error) {
-            logger.warn(new Error(`Could not create new user ${error}`).stack)
+            logger.warn({
+                event: 'USER_CREATE_ERROR',
+                error: error,
+                msg: 'Could not create new user'
+            })
         }
     }
 
@@ -95,7 +116,11 @@ const githubVerifyCallback = async (accessToken, _refreshToken, params, profile,
                 repoRes.filter((repo) => repo.token).forEach((repo) => checkToken(repo, accessToken))
             }
         } catch (error) {
-            logger.warn(new Error(error).stack)
+            logger.warn({
+                event: 'REPO_UPDATE_ERROR',
+                error: error,
+                msg: 'Error updating repo'
+            })
         }
     }
     if (params.scope.indexOf('admin:org_hook') >= 0) {
@@ -110,7 +135,11 @@ const githubVerifyCallback = async (accessToken, _refreshToken, params, profile,
                 orgRes.forEach((org) => checkToken(org, accessToken))
             }
         } catch (error) {
-            logger.warn(new Error(error).stack)
+            logger.warn({
+                event: 'ORG_UPDATE_ERROR',
+                error: error,
+                msg: 'Error updating org'
+            })
         }
     }
     done(null, merge(profile._json, {

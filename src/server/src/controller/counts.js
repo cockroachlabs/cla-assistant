@@ -27,7 +27,11 @@ router.all('/count/repos', async (req, res) => {
             text: `There are ${repoCount} registered repositories!`
         }))
     } catch (error) {
-        logger.info(error)
+        logger.error({
+            event: 'COUNTS_ERROR',
+            error: error,
+            msg: 'Error getting counts'
+        })
     }
 })
 
@@ -40,8 +44,11 @@ router.all('/count/orgs', async (req, res) => {
             text: `There are ${orgsCount} registered organizations!`
         }))
     } catch (error) {
-        res.status(500).send(error)
-        logger.info(error)
+        logger.error({
+            event: 'COUNTS_ERROR',
+            error: error,
+            msg: 'Error getting counts'
+        })
     }
 })
 
@@ -60,7 +67,11 @@ router.all('/count/clas', async (req, res) => {
             '$count': 'count'
         }])
     } catch (error) {
-        logger.info(error)
+        logger.error({
+            event: 'COUNTS_ERROR',
+            error: error,
+            msg: 'Error getting counts'
+        })
     }
     if (!Array.isArray(data) || data[0].count === undefined) {
         data = [{ count: 0 }]
@@ -89,7 +100,11 @@ router.all('/count/stars', async (_req, res) => {
             owner: 'cla-assistant'
         })
     } catch (error) {
-        logger.info(error)
+        logger.error({
+            event: 'COUNTS_ERROR',
+            error: error,
+            msg: 'Error getting counts'
+        })
     }
     res.send(JSON.stringify({
         count: resp.data.stargazers_count

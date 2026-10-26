@@ -80,23 +80,36 @@ class OrgService {
         } catch(error) {
             return _resp('GitHub App not installed')
         }
-        logger.debug('generated app token:', appToken)
+        logger.debug({
+            event: 'APP_TOKEN_GENERATED',
+            msg: 'Generated app token'
+        })
 
         // remove token from database
-        logger.info('Removing token from organization object')
+        logger.info({
+            event: 'TOKEN_REMOVAL',
+            msg: 'Removing token from organization object'
+        })
         org.token = undefined
         try {
             await org.save()
         } catch(error) {
             return _resp('Cannot save organization')
         }
-        logger.info('done!')
+        logger.info({
+            event: 'OPERATION_COMPLETE',
+            msg: 'Operation completed successfully'
+        })
 
         // remove webhook from organization
         try {
             await webhookService.removeOrgHook(org.org, appToken)
         } catch(error) {
-            logger.warn('cannot remove webhook/s from repository:', error.toString())
+            logger.warn({
+                event: 'WEBHOOK_REMOVAL_ERROR',
+                error: error,
+                msg: 'Cannot remove webhook/s from organization'
+            })
         }
 
         return _resp('Migration successful', true)
